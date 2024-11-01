@@ -4,7 +4,21 @@ import { Button } from "./ui/button"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
-const fetchAssetDetails = async (symbol) => {
+interface AssetData {
+  symbol: string
+  name: string
+  market_cap: number
+  price: number
+  volume: number
+  priceHistory: { date: string; close: number }[]
+}
+
+interface AssetDetailsProps {
+  asset: { symbol: string; name: string }
+  onBack: () => void
+}
+
+const fetchAssetDetails = async (symbol: string): Promise<AssetData> => {
   if (!symbol) {
     throw new Error("Symbol is required")
   }
@@ -32,7 +46,7 @@ const fetchAssetDetails = async (symbol) => {
 
     return {
       ...quoteData.data[0],
-      priceHistory: historyData.data.map(item => ({
+      priceHistory: historyData.data.map((item: { date: string; close: number }) => ({
         date: item.date,
         close: item.close || 0
       }))
@@ -43,19 +57,19 @@ const fetchAssetDetails = async (symbol) => {
   }
 }
 
-const getCurrentDate = () => {
+const getCurrentDate = (): string => {
   return new Date().toISOString().split('T')[0]
 }
 
-const getDateXDaysAgo = (days) => {
+const getDateXDaysAgo = (days: number): string => {
   const date = new Date()
   date.setDate(date.getDate() - days)
   return date.toISOString().split('T')[0]
 }
 
-export default function AssetDetails({ asset = {}, onBack }) {
-  const [details, setDetails] = useState(null)
-  const [error, setError] = useState(null)
+export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
+  const [details, setDetails] = useState<AssetData | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (asset && asset.symbol) {
