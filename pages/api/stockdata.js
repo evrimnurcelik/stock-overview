@@ -1,42 +1,51 @@
+import yf from 'yfinance'
 
 export default async function handler(req, res) {
-  const { endpoint, symbol } = req.query
-  const apiKey = process.env.STOCKDATA_API_KEY
-  if (!apiKey) {
-    console.error('API key not configured')
-    return res.status(500).json({ error: 'API key not configured' })
-  }
-
-  const baseUrl = 'https://api.stockdata.org/v1'
-  let url
-
-  if (endpoint === 'market/rankings') {
-    // Use the /v1/data/quote endpoint to fetch data for multiple symbols
-    const symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'FB', 'TSLA', 'BRK.A', 'V', 'JNJ', 'WMT'].join(',')
-    url = `${baseUrl}/data/quote?symbols=${symbols}&api_token=${apiKey}`
-  } else if (endpoint === 'data/intraday/adjusted') {
-    if (!symbol) {
-      return res.status(400).json({ error: 'Symbol is required for intraday data' })
-    }
-    url = `${baseUrl}/data/intraday?symbols=${symbol}&api_token=${apiKey}`
-  } else {
-    return res.status(400).json({ error: 'Invalid endpoint' })
-  }
-
-  console.log('Requesting URL:', url) // Log the URL for debugging
+  const { endpoint } = req.query
 
   try {
-    const response = await fetch(url)
-    const data = await response.json()
-    
-    if (!response.ok) {
-      console.error('API Response:', JSON.stringify(data, null, 2))
-      throw new Error(JSON.stringify(data.error || `HTTP error! status: ${response.status}`))
+    if (endpoint === 'top50') {
+      // Fetch top 50 stocks by market cap
+      const topStocks = await yf.getTopMarketCap(50)
+      
+      // Fetch details for each stock
+      const stockDetails = await Promise.all(
+        topStocks.map(async (symbol) => {
+          try {
+            const quote = await yf.quote(symbol)
+            return {
+              symbol,
+              name: quote.longName || quote.shortName || 'Unknown',
+              price: quote.regularMarketPrice || 0,
+              marketCap: quote.marketCap || 0,
+              dayHigh: quote.dayHigh || 0,
+              dayLow: quote.dayLow || 0,
+            }
+          } catch (error) {
+            console.error(`Error fetching details for ${symbol}:`, error)
+            return null
+          }
+        })
+      )
+
+      // Filter out any null results (failed fetches)
+      const validStockDetails = stockDetails.filter(stock => stock !== null)
+
+      res.status(200).json(validStockDetails)
+    } else if (endpoint === 'details') {
+      const { symbol } = req.query
+      if (!symbol) {
+        res.status(400).json({ error: 'Symbol is required' })
+        return
+      }
+      const quote = await yf.quote(symbol)
+      const history = await yf.historical(symbol, { period: '1mo' })
+      res.status(200).json({ quote, history })
+    } else {
+      res.status(400).json({ error: 'Invalid endpoint' })
     }
-    
-    res.status(200).json(data)
   } catch (error) {
-    console.error('Error fetching data from StockData API:', error)
-    res.status(500).json({ error: `Error fetching data from StockData API: ${error.message}` })
+    console.error('Error fetching data:', error)
+    res.status(500).json({ error: 'Error fetching data', details: error.message })
   }
 }
