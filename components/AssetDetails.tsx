@@ -114,6 +114,18 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
     )
   }
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2 border border-gray-200 rounded shadow">
+          <p className="label">{`Date: ${label}`}</p>
+          <p className="value">{`Price: $${payload[0].value.toFixed(2)}`}</p>
+        </div>
+      )
+    }
+    return null
+  }
+
   return (
     <Card className="bg-white border-4 border-black p-8">
       <CardHeader>
@@ -141,7 +153,7 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Line type="monotone" dataKey="close" name="Price" stroke="var(--color-price)" strokeWidth={2} />
               </LineChart>
