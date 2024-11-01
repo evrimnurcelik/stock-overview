@@ -14,7 +14,7 @@ interface Asset {
 
 const fetchTopAssets = async (): Promise<Asset[]> => {
   try {
-    const response = await fetch('/api/stockdata?endpoint=market/ranking')
+    const response = await fetch('/api/stockdata?endpoint=data/market')
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
