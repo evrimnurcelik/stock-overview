@@ -1,18 +1,34 @@
-import React from 'react'
+import React, { ReactNode } from 'react'
 
-export const ChartContainer = ({ children, config, className }) => (
+interface ChartContainerProps {
+  children: ReactNode
+  config: Record<string, unknown>
+  className?: string
+}
+
+export const ChartContainer: React.FC<ChartContainerProps> = ({ children, className }) => (
   <div className={className}>
     {children}
   </div>
 )
 
-export const ChartTooltip = ({ content }) => (
+interface ChartTooltipProps {
+  content: ReactNode
+}
+
+export const ChartTooltip: React.FC<ChartTooltipProps> = ({ content }) => (
   <div className="bg-white p-2 border border-gray-200 rounded shadow">
     {content}
   </div>
 )
 
-export const ChartTooltipContent = ({ active, payload, label }) => {
+interface ChartTooltipContentProps {
+  active?: boolean
+  payload?: Array<{ value: number }>
+  label?: string
+}
+
+export const ChartTooltipContent: React.FC<ChartTooltipContentProps> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow">
