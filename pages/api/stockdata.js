@@ -11,7 +11,9 @@ export default async function handler(req, res) {
   let url
 
   if (endpoint === 'market/rankings') {
-    url = `${baseUrl}/data/market-rankings?api_token=${apiKey}`
+    // Use the /v1/data/quote endpoint to fetch data for multiple symbols
+    const symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'FB', 'TSLA', 'BRK.A', 'V', 'JNJ', 'WMT'].join(',')
+    url = `${baseUrl}/data/quote?symbols=${symbols}&api_token=${apiKey}`
   } else if (endpoint === 'data/intraday/adjusted') {
     if (!symbol) {
       return res.status(400).json({ error: 'Symbol is required for intraday data' })

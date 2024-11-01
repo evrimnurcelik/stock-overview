@@ -8,26 +8,35 @@ import AssetDetails from './AssetDetails'
 interface Asset {
   symbol: string
   name: string
-  market_cap: number
   price: number
+  day_high: number
+  day_low: number
+  day_open: number
+  previous_close_price: number
 }
 
 const fetchTopAssets = async (): Promise<Asset[]> => {
   try {
     const response = await fetch('/api/stockdata?endpoint=market/rankings')
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-    }
     const data = await response.json()
-    if (data.error) {
-      throw new Error(data.error)
+    
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`)
     }
-    return data.data.slice(0, 50).map((asset: any) => ({
-      symbol: asset.symbol,
-      name: asset.name,
-      market_cap: asset.market_cap || 0,
-      price: asset.price || 0
+    
+    if (!data.data || !Array.isArray(data.data)) {
+      console.error('Unexpected API response:', JSON.stringify(data, null, 2))
+      throw new Error('Unexpected API response format')
+    }
+    
+    return data.data.map((asset: any) => ({
+      symbol: asset.symbol || 'Unknown',
+      name: asset.name || 'Unknown',
+      price: asset.price || 0,
+      day_high: asset.day_high || 0,
+      day_low: asset.day_low || 0,
+      day_open: asset.day_open || 0,
+      previous_close_price: asset.previous_close_price || 0
     }))
   } catch (error) {
     console.error('Error fetching top assets:', error)
@@ -50,13 +59,16 @@ export default function AssetOverview() {
         <h1 className="text-6xl font-bold mb-8 text-red-600">Error</h1>
         <div className="text-red-600 text-2xl font-bold">{error}</div>
         <p className="mt-4">Please check your API key and endpoint configuration.</p>
+        <pre className="mt-4 p-4 bg-white border-2 border-red-600 overflow-auto">
+          {error}
+        </pre>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-yellow-200 p-8 font-mono">
-      <h1 className="text-6xl font-bold mb-8 text-red-600">Top 50 Stocks & ETFs</h1>
+      <h1 className="text-6xl font-bold mb-8 text-red-600">Top 10 Stocks</h1>
       {selectedAsset ? (
         <AssetDetails asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
       ) : (
@@ -68,8 +80,9 @@ export default function AssetOverview() {
               </CardHeader>
               <CardContent>
                 <p className="text-xl">{asset.name}</p>
-                <p className="text-lg">Market Cap: ${asset.market_cap.toLocaleString()}</p>
-                <p className="text-lg">Price: ${asset.price.toFixed(2)}</p>
+                <p className="text-lg">Price: ${asset.price?.toFixed(2) ?? 'N/A'}</p>
+                <p className="text-lg">Day High: ${asset.day_high?.toFixed(2) ?? 'N/A'}</p>
+                <p className="text-lg">Day Low: ${asset.day_low?.toFixed(2) ?? 'N/A'}</p>
                 <Button 
                   onClick={() => setSelectedAsset(asset)} 
                   className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-800 rounded"
