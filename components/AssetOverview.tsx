@@ -1,34 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
-import { Button } from "./ui/button"
 import AssetDetails from './AssetDetails'
 
 interface Asset {
   symbol: string
   companyName: string
   latestPrice: number
-  change?: number
-  changePercent?: number
+  change: number
+  changePercent: number
 }
 
-const symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'TSLA', 'BRK.A', 'V', 'JNJ', 'WMT'];
+const symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META'];
 
 const fetchAssetData = async (symbol: string): Promise<Asset> => {
   const quoteResponse = await fetch(`/api/stockdata?endpoint=quote&symbol=${symbol}`);
   const quoteData = await quoteResponse.json();
 
-  if (quoteData.error) {
-    throw new Error(quoteData.error);
-  }
-
   const profileResponse = await fetch(`/api/stockdata?endpoint=stock/profile2&symbol=${symbol}`);
   const profileData = await profileResponse.json();
-
-  if (profileData.error) {
-    throw new Error(profileData.error);
-  }
 
   return {
     symbol: symbol,
@@ -39,65 +29,55 @@ const fetchAssetData = async (symbol: string): Promise<Asset> => {
   };
 }
 
-const fetchTopAssets = async (): Promise<Asset[]> => {
-  try {
-    const assets = await Promise.all(symbols.map(fetchAssetData));
-    return assets.sort((a, b) => b.latestPrice - a.latestPrice);
-  } catch (error) {
-    console.error('Error fetching top assets:', error);
-    throw error;
-  }
-}
-
 export default function AssetOverview() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchTopAssets().then(setAssets).catch(err => setError(err.message));
+    const fetchAllAssets = async () => {
+      try {
+        const fetchedAssets = await Promise.all(symbols.map(fetchAssetData));
+        setAssets(fetchedAssets);
+      } catch (error) {
+        setError('Failed to fetch asset data. Please try again later.');
+      }
+    };
+
+    fetchAllAssets();
   }, []);
 
   if (error) {
     return (
-      <div className="min-h-screen bg-yellow-200 p-8 font-mono">
-        <h1 className="text-6xl font-bold mb-8 text-red-600">Error</h1>
-        <div className="text-red-600 text-2xl font-bold">{error}</div>
-        <p className="mt-4">
-          {error.includes('API access denied') 
-            ? 'It seems there\'s an issue with the API key or account permissions. Please contact the administrator.'
-            : 'An unexpected error occurred. Please try again later or contact support if the problem persists.'}
-        </p>
+      <div className="min-h-screen bg-yellow-300 p-4 font-mono">
+        <h1 className="text-6xl font-bold mb-8 text-black uppercase">Error</h1>
+        <p className="text-2xl text-black">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-yellow-200 p-8 font-mono">
-      <h1 className="text-6xl font-bold mb-8 text-red-600">Top 10 Stocks</h1>
+    <div className="min-h-screen bg-yellow-300 p-4 font-mono">
+      <h1 className="text-6xl font-bold mb-8 text-black uppercase">Top 5 Stocks</h1>
       {selectedAsset ? (
         <AssetDetails asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {assets.map((asset) => (
-            <Card key={asset.symbol} className="bg-white border-4 border-black">
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold">{asset.symbol}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xl">{asset.companyName}</p>
-                <p className="text-lg">Price: ${asset.latestPrice?.toFixed(2) ?? 'N/A'}</p>
-                <p className={`text-lg ${(asset.changePercent ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  Change: {asset.changePercent?.toFixed(2) ?? 'N/A'}%
-                </p>
-                <Button 
-                  onClick={() => setSelectedAsset(asset)} 
-                  className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-800 rounded"
-                >
-                  View Details
-                </Button>
-              </CardContent>
-            </Card>
+            <div key={asset.symbol} className="bg-white border-4 border-black p-4">
+              <h2 className="text-3xl font-bold mb-2">{asset.symbol}</h2>
+              <p className="text-xl mb-1">{asset.companyName}</p>
+              <p className="text-lg mb-1">Price: ${asset.latestPrice.toFixed(2)}</p>
+              <p className={`text-lg mb-2 ${asset.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                Change: {asset.changePercent.toFixed(2)}%
+              </p>
+              <button 
+                onClick={() => setSelectedAsset(asset)} 
+                className="w-full bg-black text-white font-bold py-2 px-4 border-2 border-white hover:bg-white hover:text-black hover:border-black transition-colors"
+              >
+                VIEW DETAILS
+              </button>
+            </div>
           ))}
         </div>
       )}

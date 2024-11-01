@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
-import { Button } from "./ui/button"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
 interface Asset {
   symbol: string
   companyName: string
   latestPrice: number
-  change?: number
-  changePercent?: number
+  change: number
+  changePercent: number
 }
 
 interface AssetDetailsProps {
@@ -34,11 +32,11 @@ const fetchAssetDetails = async (symbol: string): Promise<DetailedAssetData> => 
   const data = await response.json();
 
   return {
-    marketCap: data.metric.marketCapitalization,
-    peRatio: data.metric.peBasicExclExtraTTM,
-    dividendYield: data.metric.dividendYieldIndicatedAnnual,
-    sector: data.metric.sector,
-    industry: data.metric.industry
+    marketCap: data.metric?.marketCapitalization || 0,
+    peRatio: data.metric?.peBasicExclExtraTTM || 0,
+    dividendYield: data.metric?.dividendYieldIndicatedAnnual || 0,
+    sector: data.metric?.sector || 'Unknown',
+    industry: data.metric?.industry || 'Unknown'
   };
 }
 
@@ -60,66 +58,64 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetchAssetDetails(asset.symbol),
-      fetchHistoricalData(asset.symbol)
-    ]).then(([detailsData, historicalData]) => {
-      setDetails(detailsData);
-      setHistoricalData(historicalData);
-    }).catch(err => setError(err.message));
+    const fetchData = async () => {
+      try {
+        const [detailsData, historicalData] = await Promise.all([
+          fetchAssetDetails(asset.symbol),
+          fetchHistoricalData(asset.symbol)
+        ]);
+        setDetails(detailsData);
+        setHistoricalData(historicalData);
+      } catch (error) {
+        setError('Failed to fetch asset details. Please try again later.');
+      }
+    };
+
+    fetchData();
   }, [asset.symbol]);
 
   if (error) {
     return (
-      <Card className="bg-white border-4 border-black p-8">
-        <CardHeader>
-          <CardTitle className="text-4xl font-bold text-red-600">Error</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xl text-red-600">{error}</p>
-          <Button 
-            onClick={onBack} 
-            className="mt-8 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 border-b-4 border-green-700 hover:border-green-800 rounded"
-          >
-            Back to Overview
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="bg-white border-4 border-black p-4">
+        <h2 className="text-4xl font-bold mb-4 text-black uppercase">Error</h2>
+        <p className="text-2xl text-black">{error}</p>
+        <button 
+          onClick={onBack} 
+          className="w-full mt-4 bg-black text-white font-bold py-2 px-4 border-2 border-white hover:bg-white hover:text-black hover:border-black transition-colors"
+        >
+          BACK TO OVERVIEW
+        </button>
+      </div>
     );
   }
 
   if (!details) {
     return (
-      <Card className="bg-white border-4 border-black p-8">
-        <CardHeader>
-          <CardTitle className="text-4xl font-bold text-blue-600">Loading...</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xl">Fetching asset details...</p>
-        </CardContent>
-      </Card>
+      <div className="bg-white border-4 border-black p-4">
+        <h2 className="text-4xl font-bold mb-4 text-black uppercase">Loading...</h2>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-white border-4 border-black p-8">
-      <CardHeader>
-        <CardTitle className="text-4xl font-bold text-red-600">{asset.symbol}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl mb-4">{asset.companyName}</p>
-        <p className="text-xl">Price: ${asset.latestPrice?.toFixed(2) ?? 'N/A'}</p>
-        <p className={`text-xl ${(asset.changePercent ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-          Change: {asset.changePercent?.toFixed(2) ?? 'N/A'}%
+    <div className="bg-white border-4 border-black p-4">
+      <h2 className="text-4xl font-bold mb-4 text-black uppercase">{asset.symbol}</h2>
+      <div className="mb-4">
+        <p className="text-2xl mb-2">{asset.companyName}</p>
+        <p className="text-xl mb-1">Price: ${asset.latestPrice.toFixed(2)}</p>
+        <p className={`text-xl mb-1 ${asset.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          Change: {asset.changePercent.toFixed(2)}%
         </p>
-        <p className="text-xl">Market Cap: ${details.marketCap?.toLocaleString() ?? 'N/A'}</p>
-        <p className="text-xl">P/E Ratio: {details.peRatio?.toFixed(2) ?? 'N/A'}</p>
-        <p className="text-xl">Dividend Yield: {(details.dividendYield ? (details.dividendYield * 100).toFixed(2) : 'N/A')}%</p>
-        <p className="text-xl">Sector: {details.sector || 'N/A'}</p>
-        <p className="text-xl">Industry: {details.industry || 'N/A'}</p>
-        
-        <div className="mt-8">
-          <h2 className="text-3xl font-bold mb-4">Price Development (Last 30 Days)</h2>
+        <p className="text-xl mb-1">Market Cap: ${details.marketCap.toLocaleString()}</p>
+        <p className="text-xl mb-1">P/E Ratio: {details.peRatio.toFixed(2)}</p>
+        <p className="text-xl mb-1">Dividend Yield: {details.dividendYield.toFixed(2)}%</p>
+        <p className="text-xl mb-1">Sector: {details.sector}</p>
+        <p className="text-xl mb-1">Industry: {details.industry}</p>
+      </div>
+      
+      <div className="mt-8 mb-4">
+        <h3 className="text-3xl font-bold mb-4 uppercase">Price Development (Last 30 Days)</h3>
+        <div className="border-4 border-black p-2">
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={historicalData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -127,18 +123,18 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="close" name="Close Price" stroke="#8884d8" />
+              <Line type="monotone" dataKey="close" name="Close Price" stroke="#000" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        
-        <Button 
-          onClick={onBack} 
-          className="mt-8 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 border-b-4 border-green-700 hover:border-green-800 rounded"
-        >
-          Back to Overview
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+      
+      <button 
+        onClick={onBack} 
+        className="w-full bg-black text-white font-bold py-2 px-4 border-2 border-white hover:bg-white hover:text-black hover:border-black transition-colors"
+      >
+        BACK TO OVERVIEW
+      </button>
+    </div>
   );
 }

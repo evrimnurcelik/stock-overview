@@ -1,4 +1,6 @@
 node_modules/
+.next/
+./DS_Store
 .next/trace
 .next/static/webpack/webpack.9475a1bfff9aa6de.hot-update.js
 .next/static/webpack/pages/index.9475a1bfff9aa6de.hot-update.js
