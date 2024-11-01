@@ -7,51 +7,69 @@ import AssetDetails from './AssetDetails'
 
 interface Asset {
   symbol: string
-  name: string
-  market_cap: number
-  price: number
+  companyName: string
+  latestPrice: number
+  change?: number
+  changePercent?: number
+}
+
+const symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'TSLA', 'BRK.A', 'V', 'JNJ', 'WMT'];
+
+const fetchAssetData = async (symbol: string): Promise<Asset> => {
+  const quoteResponse = await fetch(`/api/stockdata?endpoint=quote&symbol=${symbol}`);
+  const quoteData = await quoteResponse.json();
+
+  if (quoteData.error) {
+    throw new Error(quoteData.error);
+  }
+
+  const profileResponse = await fetch(`/api/stockdata?endpoint=stock/profile2&symbol=${symbol}`);
+  const profileData = await profileResponse.json();
+
+  if (profileData.error) {
+    throw new Error(profileData.error);
+  }
+
+  return {
+    symbol: symbol,
+    companyName: profileData.name || 'Unknown',
+    latestPrice: quoteData.c || 0,
+    change: quoteData.d || 0,
+    changePercent: quoteData.dp || 0
+  };
 }
 
 const fetchTopAssets = async (): Promise<Asset[]> => {
   try {
-    const response = await fetch('/api/stockdata?endpoint=data/quote&symbols=AAPL,MSFT,AMZN,GOOGL,FB,TSLA,BRK.A,V,JNJ,WMT')
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-    }
-    const data = await response.json()
-    if (data.error) {
-      throw new Error(data.error)
-    }
-    return data.data.map((asset: { symbol: string; name: string; market_cap?: number; price?: number }) => ({
-      symbol: asset.symbol,
-      name: asset.name,
-      market_cap: asset.market_cap || 0,
-      price: asset.price || 0
-    }))
+    const assets = await Promise.all(symbols.map(fetchAssetData));
+    return assets.sort((a, b) => b.latestPrice - a.latestPrice);
   } catch (error) {
-    console.error('Error fetching top assets:', error)
-    throw error
+    console.error('Error fetching top assets:', error);
+    throw error;
   }
 }
 
 export default function AssetOverview() {
-  const [assets, setAssets] = useState<Asset[]>([])
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchTopAssets().then(setAssets).catch(err => setError(err.message))
-  }, [])
+    fetchTopAssets().then(setAssets).catch(err => setError(err.message));
+  }, []);
 
   if (error) {
     return (
       <div className="min-h-screen bg-yellow-200 p-8 font-mono">
         <h1 className="text-6xl font-bold mb-8 text-red-600">Error</h1>
         <div className="text-red-600 text-2xl font-bold">{error}</div>
-        <p className="mt-4">Please check your API key and endpoint configuration.</p>
+        <p className="mt-4">
+          {error.includes('API access denied') 
+            ? 'It seems there\'s an issue with the API key or account permissions. Please contact the administrator.'
+            : 'An unexpected error occurred. Please try again later or contact support if the problem persists.'}
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -67,9 +85,11 @@ export default function AssetOverview() {
                 <CardTitle className="text-2xl font-bold">{asset.symbol}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xl">{asset.name}</p>
-                <p className="text-lg">Market Cap: ${asset.market_cap.toLocaleString()}</p>
-                <p className="text-lg">Price: ${asset.price.toFixed(2)}</p>
+                <p className="text-xl">{asset.companyName}</p>
+                <p className="text-lg">Price: ${asset.latestPrice?.toFixed(2) ?? 'N/A'}</p>
+                <p className={`text-lg ${(asset.changePercent ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  Change: {asset.changePercent?.toFixed(2) ?? 'N/A'}%
+                </p>
                 <Button 
                   onClick={() => setSelectedAsset(asset)} 
                   className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-800 rounded"
@@ -82,5 +102,5 @@ export default function AssetOverview() {
         </div>
       )}
     </div>
-  )
+  );
 }

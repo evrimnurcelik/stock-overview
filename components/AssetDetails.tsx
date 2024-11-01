@@ -1,85 +1,73 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
-interface AssetData {
+interface Asset {
   symbol: string
-  name: string
-  market_cap: number
-  price: number
-  volume: number
-  priceHistory: { date: string; close: number }[]
+  companyName: string
+  latestPrice: number
+  change?: number
+  changePercent?: number
 }
 
 interface AssetDetailsProps {
-  asset: { symbol: string; name: string }
+  asset: Asset
   onBack: () => void
 }
 
-const fetchAssetDetails = async (symbol: string): Promise<AssetData> => {
-  if (!symbol) {
-    throw new Error("Symbol is required")
-  }
-
-  try {
-    const response = await fetch(`/api/stockdata?endpoint=data/quote?symbols=${symbol}`)
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-    }
-    const quoteData = await response.json()
-    if (quoteData.error) {
-      throw new Error(quoteData.error)
-    }
-
-    const historyResponse = await fetch(`/api/stockdata?endpoint=data/eod?symbols=${symbol}&date_from=${getDateXDaysAgo(30)}&date_to=${getCurrentDate()}`)
-    if (!historyResponse.ok) {
-      const errorData = await historyResponse.json()
-      throw new Error(errorData.error || `HTTP error! status: ${historyResponse.status}`)
-    }
-    const historyData = await historyResponse.json()
-    if (historyData.error) {
-      throw new Error(historyData.error)
-    }
-
-    return {
-      ...quoteData.data[0],
-      priceHistory: historyData.data.map((item: { date: string; close: number }) => ({
-        date: item.date,
-        close: item.close || 0
-      }))
-    }
-  } catch (error) {
-    console.error('Error fetching asset details:', error)
-    throw error
-  }
+interface DetailedAssetData {
+  marketCap: number
+  peRatio: number
+  dividendYield: number
+  sector: string
+  industry: string
 }
 
-const getCurrentDate = (): string => {
-  return new Date().toISOString().split('T')[0]
+interface HistoricalData {
+  date: string
+  close: number
 }
 
-const getDateXDaysAgo = (days: number): string => {
-  const date = new Date()
-  date.setDate(date.getDate() - days)
-  return date.toISOString().split('T')[0]
+const fetchAssetDetails = async (symbol: string): Promise<DetailedAssetData> => {
+  const response = await fetch(`/api/stockdata?endpoint=stock/metric&symbol=${symbol}`);
+  const data = await response.json();
+
+  return {
+    marketCap: data.metric.marketCapitalization,
+    peRatio: data.metric.peBasicExclExtraTTM,
+    dividendYield: data.metric.dividendYieldIndicatedAnnual,
+    sector: data.metric.sector,
+    industry: data.metric.industry
+  };
+}
+
+const fetchHistoricalData = async (symbol: string): Promise<HistoricalData[]> => {
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - 30 * 24 * 60 * 60; // 30 days ago
+  const response = await fetch(`/api/stockdata?endpoint=stock/candle&symbol=${symbol}&resolution=D&from=${from}&to=${to}`);
+  const data = await response.json();
+
+  return data.t.map((timestamp: number, index: number) => ({
+    date: new Date(timestamp * 1000).toISOString().split('T')[0],
+    close: data.c[index]
+  }));
 }
 
 export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
-  const [details, setDetails] = useState<AssetData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [details, setDetails] = useState<DetailedAssetData | null>(null);
+  const [historicalData, setHistoricalData] = useState<HistoricalData[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (asset && asset.symbol) {
-      fetchAssetDetails(asset.symbol)
-        .then(setDetails)
-        .catch(err => setError(err.message))
-    } else {
-      setError("Invalid asset data")
-    }
-  }, [asset])
+    Promise.all([
+      fetchAssetDetails(asset.symbol),
+      fetchHistoricalData(asset.symbol)
+    ]).then(([detailsData, historicalData]) => {
+      setDetails(detailsData);
+      setHistoricalData(historicalData);
+    }).catch(err => setError(err.message));
+  }, [asset.symbol]);
 
   if (error) {
     return (
@@ -89,7 +77,6 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
         </CardHeader>
         <CardContent>
           <p className="text-xl text-red-600">{error}</p>
-          <p className="mt-4">Please check your API key and endpoint configuration.</p>
           <Button 
             onClick={onBack} 
             className="mt-8 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 border-b-4 border-green-700 hover:border-green-800 rounded"
@@ -98,7 +85,7 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (!details) {
@@ -111,54 +98,38 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
           <p className="text-xl">Fetching asset details...</p>
         </CardContent>
       </Card>
-    )
-  }
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-2 border border-gray-200 rounded shadow">
-          <p className="label">{`Date: ${label}`}</p>
-          <p className="value">{`Price: $${payload[0].value.toFixed(2)}`}</p>
-        </div>
-      )
-    }
-    return null
+    );
   }
 
   return (
     <Card className="bg-white border-4 border-black p-8">
       <CardHeader>
-        <CardTitle className="text-4xl font-bold text-red-600">{details.symbol}</CardTitle>
+        <CardTitle className="text-4xl font-bold text-red-600">{asset.symbol}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl mb-4">{details.name}</p>
-        <p className="text-xl">Market Cap: ${(details.market_cap || 0).toLocaleString()}</p>
-        <p className="text-xl">Price: ${(details.price || 0).toFixed(2)}</p>
-        <p className="text-xl">Volume: {(details.volume || 0).toLocaleString()}</p>
+        <p className="text-2xl mb-4">{asset.companyName}</p>
+        <p className="text-xl">Price: ${asset.latestPrice?.toFixed(2) ?? 'N/A'}</p>
+        <p className={`text-xl ${(asset.changePercent ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          Change: {asset.changePercent?.toFixed(2) ?? 'N/A'}%
+        </p>
+        <p className="text-xl">Market Cap: ${details.marketCap?.toLocaleString() ?? 'N/A'}</p>
+        <p className="text-xl">P/E Ratio: {details.peRatio?.toFixed(2) ?? 'N/A'}</p>
+        <p className="text-xl">Dividend Yield: {(details.dividendYield ? (details.dividendYield * 100).toFixed(2) : 'N/A')}%</p>
+        <p className="text-xl">Sector: {details.sector || 'N/A'}</p>
+        <p className="text-xl">Industry: {details.industry || 'N/A'}</p>
         
         <div className="mt-8">
-          <h2 className="text-3xl font-bold mb-4">Price Development</h2>
-          <ChartContainer
-            config={{
-              price: {
-                label: "Price",
-                color: "hsl(var(--chart-1))",
-              },
-            }}
-            className="h-[400px]"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={details.priceHistory}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Line type="monotone" dataKey="close" name="Price" stroke="var(--color-price)" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          <h2 className="text-3xl font-bold mb-4">Price Development (Last 30 Days)</h2>
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={historicalData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="close" name="Close Price" stroke="#8884d8" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
         
         <Button 
@@ -169,5 +140,5 @@ export default function AssetDetails({ asset, onBack }: AssetDetailsProps) {
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }
