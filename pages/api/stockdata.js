@@ -1,5 +1,3 @@
-import fetch from 'node-fetch'
-
 export default async function handler(req, res) {
   const { endpoint } = req.query
   const apiKey = 'pwCa3IbGkp8TGF780nAcokRVspzXgyUPdmKx8biA'
