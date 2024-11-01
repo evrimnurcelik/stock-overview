@@ -2,12 +2,8 @@
 
 body {
   font-family: 'Roboto Mono', monospace;
-  background-color: #ffd700;
+  background-color: #ffff00;
   color: #000000;
-}
-
-.card {
-  box-shadow: 8px 8px 0px #000000;
 }
 
 .button {
@@ -15,6 +11,6 @@ body {
 }
 
 .button:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0px #000000;
+  background-color: #ffffff;
+  color: #000000;
 }
