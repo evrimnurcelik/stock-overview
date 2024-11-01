@@ -6,15 +6,26 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API key not configured' })
   }
 
-  const baseUrl = 'https://api.stockdata.org/v1'
-  const url = `${baseUrl}/${endpoint}?api_token=${apiKey}`
+  console.log('API Key:', apiKey ? 'Configured' : 'Not configured')
+  console.log('Endpoint:', endpoint)
 
-  console.log('Requesting URL:', url) // Log the URL for debugging
+  const baseUrl = 'https://api.stockdata.org/v1'
+  
+  // Construct the URL based on the endpoint
+  let url
+  if (endpoint.includes('?')) {
+    url = `${baseUrl}/${endpoint}&api_token=${apiKey}`
+  } else {
+    url = `${baseUrl}/${endpoint}?api_token=${apiKey}`
+  }
+
+  console.log('Requesting URL:', url.replace(apiKey, '[REDACTED]')) // Log the URL for debugging, but hide the API key
 
   try {
     const response = await fetch(url)
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      const errorText = await response.text()
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
     }
     const data = await response.json()
     
@@ -25,9 +36,6 @@ export default async function handler(req, res) {
     res.status(200).json(data)
   } catch (error) {
     console.error('Error details:', error)
-    console.error('Error fetching data from StockData API:', error)
-    console.error('Response status:', response.status)
-    console.error('Response text:', await response.text())
     res.status(500).json({ error: `Error fetching data from StockData API: ${error.message}` })
   }
 }
