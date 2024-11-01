@@ -5,7 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import AssetDetails from './AssetDetails'
 
-const fetchTopAssets = async () => {
+interface Asset {
+  symbol: string
+  name: string
+  market_cap: number
+  price: number
+}
+
+const fetchTopAssets = async (): Promise<Asset[]> => {
   try {
     const response = await fetch('/api/stockdata?endpoint=market/rankings')
     if (!response.ok) {
@@ -16,7 +23,7 @@ const fetchTopAssets = async () => {
     if (data.error) {
       throw new Error(data.error)
     }
-    return data.data.slice(0, 50).map(asset => ({
+    return data.data.slice(0, 50).map((asset: { symbol: string; name: string; market_cap?: number; price?: number }) => ({
       symbol: asset.symbol,
       name: asset.name,
       market_cap: asset.market_cap || 0,
@@ -29,9 +36,9 @@ const fetchTopAssets = async () => {
 }
 
 export default function AssetOverview() {
-  const [assets, setAssets] = useState([])
-  const [selectedAsset, setSelectedAsset] = useState(null)
-  const [error, setError] = useState(null)
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTopAssets().then(setAssets).catch(err => setError(err.message))
@@ -50,7 +57,7 @@ export default function AssetOverview() {
   return (
     <div className="min-h-screen bg-yellow-200 p-8 font-mono">
       <h1 className="text-6xl font-bold mb-8 text-red-600">Top 50 Stocks & ETFs</h1>
-      {selectedAsset && selectedAsset.symbol ? (
+      {selectedAsset ? (
         <AssetDetails asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
