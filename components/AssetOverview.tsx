@@ -23,7 +23,7 @@ const fetchTopAssets = async (): Promise<Asset[]> => {
     if (data.error) {
       throw new Error(data.error)
     }
-    return data.data.slice(0, 50).map((asset: { symbol: string; name: string; market_cap?: number; price?: number }) => ({
+    return data.data.slice(0, 50).map((asset: any) => ({
       symbol: asset.symbol,
       name: asset.name,
       market_cap: asset.market_cap || 0,

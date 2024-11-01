@@ -1,7 +1,6 @@
-import fetch from 'node-fetch'
 
 export default async function handler(req, res) {
-  const { endpoint } = req.query
+  const { endpoint, symbol } = req.query
   const apiKey = process.env.STOCKDATA_API_KEY
   if (!apiKey) {
     console.error('API key not configured')
@@ -9,19 +8,27 @@ export default async function handler(req, res) {
   }
 
   const baseUrl = 'https://api.stockdata.org/v1'
-  const url = `${baseUrl}/${endpoint}&api_token=${apiKey}`
+  let url
+
+  if (endpoint === 'market/rankings') {
+    url = `${baseUrl}/data/market-rankings?api_token=${apiKey}`
+  } else if (endpoint === 'data/intraday/adjusted') {
+    if (!symbol) {
+      return res.status(400).json({ error: 'Symbol is required for intraday data' })
+    }
+    url = `${baseUrl}/data/intraday?symbols=${symbol}&api_token=${apiKey}`
+  } else {
+    return res.status(400).json({ error: 'Invalid endpoint' })
+  }
 
   console.log('Requesting URL:', url) // Log the URL for debugging
 
   try {
     const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
     const data = await response.json()
     
-    if (data.error) {
-      throw new Error(data.error)
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`)
     }
     
     res.status(200).json(data)
