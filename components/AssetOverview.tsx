@@ -79,7 +79,7 @@ export default function AssetOverview() {
                 <CardTitle className="text-2xl font-bold">{asset.symbol}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xl">{asset.name}</p>
+                <p className="text-xl">{asset.name !== 'Unknown' ? asset.name : 'Company name not available'}</p>
                 <p className="text-lg">Price: ${asset.price?.toFixed(2) ?? 'N/A'}</p>
                 <p className="text-lg">Day High: ${asset.day_high?.toFixed(2) ?? 'N/A'}</p>
                 <p className="text-lg">Day Low: ${asset.day_low?.toFixed(2) ?? 'N/A'}</p>
