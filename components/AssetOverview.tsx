@@ -1,86 +1,86 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Button } from "./ui/button"
 import AssetDetails from './AssetDetails'
 
 interface Asset {
   symbol: string
-  companyName: string
-  latestPrice: number
-  change: number
-  changePercent: number
+  name: string
+  market_cap: number
+  price: number
 }
 
-const symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META'];
-
-const fetchAssetData = async (symbol: string): Promise<Asset> => {
-  const quoteResponse = await fetch(`/api/stockdata?endpoint=quote&symbol=${symbol}`);
-  const quoteData = await quoteResponse.json();
-
-  const profileResponse = await fetch(`/api/stockdata?endpoint=stock/profile2&symbol=${symbol}`);
-  const profileData = await profileResponse.json();
-
-  return {
-    symbol: symbol,
-    companyName: profileData.name || 'Unknown',
-    latestPrice: quoteData.c || 0,
-    change: quoteData.d || 0,
-    changePercent: quoteData.dp || 0
-  };
+const fetchTopAssets = async (): Promise<Asset[]> => {
+  try {
+    const response = await fetch('/api/stockdata?endpoint=market/rankings')
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+    }
+    const data = await response.json()
+    if (data.error) {
+      throw new Error(data.error)
+    }
+    return data.data.slice(0, 50).map((asset: { symbol: string; name: string; market_cap?: number; price?: number }) => ({
+      symbol: asset.symbol,
+      name: asset.name,
+      market_cap: asset.market_cap || 0,
+      price: asset.price || 0
+    }))
+  } catch (error) {
+    console.error('Error fetching top assets:', error)
+    throw error
+  }
 }
 
 export default function AssetOverview() {
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchAllAssets = async () => {
-      try {
-        const fetchedAssets = await Promise.all(symbols.map(fetchAssetData));
-        setAssets(fetchedAssets);
-      } catch (error) {
-        setError('Failed to fetch asset data. Please try again later.');
-      }
-    };
-
-    fetchAllAssets();
-  }, []);
+    fetchTopAssets().then(setAssets).catch(err => setError(err.message))
+  }, [])
 
   if (error) {
     return (
-      <div className="min-h-screen bg-yellow-300 p-4 font-mono">
-        <h1 className="text-6xl font-bold mb-8 text-black uppercase">Error</h1>
-        <p className="text-2xl text-black">{error}</p>
+      <div className="min-h-screen bg-yellow-200 p-8 font-mono">
+        <h1 className="text-6xl font-bold mb-8 text-red-600">Error</h1>
+        <div className="text-red-600 text-2xl font-bold">{error}</div>
+        <p className="mt-4">Please check your API key and endpoint configuration.</p>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-yellow-300 p-4 font-mono">
-      <h1 className="text-6xl font-bold mb-8 text-black uppercase">Top 5 Stocks</h1>
+    <div className="min-h-screen bg-yellow-200 p-8 font-mono">
+      <h1 className="text-6xl font-bold mb-8 text-red-600">Top 50 Stocks & ETFs</h1>
       {selectedAsset ? (
         <AssetDetails asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {assets.map((asset) => (
-            <div key={asset.symbol} className="bg-white border-4 border-black p-4">
-              <h2 className="text-3xl font-bold mb-2">{asset.symbol}</h2>
-              <p className="text-xl mb-1">{asset.companyName}</p>
-              <p className="text-lg mb-1">Price: ${asset.latestPrice.toFixed(2)}</p>
-              <p className={`text-lg mb-2 ${asset.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                Change: {asset.changePercent.toFixed(2)}%
-              </p>
-              <button 
-                onClick={() => setSelectedAsset(asset)} 
-                className="w-full bg-black text-white font-bold py-2 px-4 border-2 border-white hover:bg-white hover:text-black hover:border-black transition-colors"
-              >
-                VIEW DETAILS
-              </button>
-            </div>
+            <Card key={asset.symbol} className="bg-white border-4 border-black">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold">{asset.symbol}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xl">{asset.name}</p>
+                <p className="text-lg">Market Cap: ${asset.market_cap.toLocaleString()}</p>
+                <p className="text-lg">Price: ${asset.price.toFixed(2)}</p>
+                <Button 
+                  onClick={() => setSelectedAsset(asset)} 
+                  className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-800 rounded"
+                >
+                  View Details
+                </Button>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
     </div>
-  );
+  )
 }
