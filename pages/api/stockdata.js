@@ -1,13 +1,13 @@
 export default async function handler(req, res) {
   const { endpoint } = req.query
-  const apiKey = 'pwCa3IbGkp8TGF780nAcokRVspzXgyUPdmKx8biA'
+  const apiKey = process.env.STOCKDATA_API_KEY
   if (!apiKey) {
     console.error('API key not configured')
     return res.status(500).json({ error: 'API key not configured' })
   }
 
   const baseUrl = 'https://api.stockdata.org/v1'
-  const url = `${baseUrl}/${endpoint}&api_token=${apiKey}`
+  const url = `${baseUrl}/${endpoint}?api_token=${apiKey}`
 
   console.log('Requesting URL:', url) // Log the URL for debugging
 
@@ -24,7 +24,10 @@ export default async function handler(req, res) {
     
     res.status(200).json(data)
   } catch (error) {
+    console.error('Error details:', error)
     console.error('Error fetching data from StockData API:', error)
+    console.error('Response status:', response.status)
+    console.error('Response text:', await response.text())
     res.status(500).json({ error: `Error fetching data from StockData API: ${error.message}` })
   }
 }
