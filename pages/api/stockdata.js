@@ -28,7 +28,8 @@ export default async function handler(req, res) {
     const data = await response.json()
     
     if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`)
+      console.error('API Response:', JSON.stringify(data, null, 2))
+      throw new Error(JSON.stringify(data.error || `HTTP error! status: ${response.status}`))
     }
     
     res.status(200).json(data)
