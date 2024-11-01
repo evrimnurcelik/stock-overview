@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const { endpoint } = req.query
+  const { endpoint, symbols } = req.query
   const apiKey = process.env.STOCKDATA_API_KEY
   if (!apiKey) {
     console.error('API key not configured')
@@ -10,27 +10,24 @@ export default async function handler(req, res) {
   console.log('Endpoint:', endpoint)
 
   const baseUrl = 'https://api.stockdata.org/v1'
-  
-  // Construct the URL based on the endpoint
-  let url
-  if (endpoint.includes('?')) {
-    url = `${baseUrl}/${endpoint}&api_token=${apiKey}`
-  } else {
-    url = `${baseUrl}/${endpoint}?api_token=${apiKey}`
-  }
+  const url = `${baseUrl}/${endpoint}?api_token=${apiKey}&symbols=${symbols}`
 
   console.log('Requesting URL:', url.replace(apiKey, '[REDACTED]')) // Log the URL for debugging, but hide the API key
 
   try {
     const response = await fetch(url)
+    const responseData = await response.text()
+    console.log('Response status:', response.status)
+    console.log('Response data:', responseData)
+
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+      throw new Error(`HTTP error! status: ${response.status}, message: ${responseData}`)
     }
-    const data = await response.json()
+
+    const data = JSON.parse(responseData)
     
     if (data.error) {
-      throw new Error(data.error)
+      throw new Error(JSON.stringify(data.error))
     }
     
     res.status(200).json(data)

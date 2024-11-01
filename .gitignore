@@ -39,3 +39,12 @@ node_modules/
 .next/cache/webpack/client-development/0.pack.gz
 .next/build-manifest.json
 next-env.d.ts
+.next/cache/webpack/server-development/1.pack.gz
+.next/cache/webpack/server-development/index.pack.gz.old
+.next/server/_error.js
+.next/static/chunks/_error.js
+.next/static/webpack/c5e58542ee1ebc09.webpack.hot-update.json
+.next/static/webpack/ffa281fb87562c25.webpack.hot-update.json
+.next/static/webpack/pages/index.c5e58542ee1ebc09.hot-update.js
+.next/static/webpack/webpack.c5e58542ee1ebc09.hot-update.js
+.next/static/webpack/webpack.ffa281fb87562c25.hot-update.js

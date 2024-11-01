@@ -14,7 +14,7 @@ interface Asset {
 
 const fetchTopAssets = async (): Promise<Asset[]> => {
   try {
-    const response = await fetch('/api/stockdata?endpoint=data/market')
+    const response = await fetch('/api/stockdata?endpoint=data/quote&symbols=AAPL,MSFT,AMZN,GOOGL,FB,TSLA,BRK.A,V,JNJ,WMT')
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
@@ -23,7 +23,7 @@ const fetchTopAssets = async (): Promise<Asset[]> => {
     if (data.error) {
       throw new Error(data.error)
     }
-    return data.data.slice(0, 50).map((asset: { symbol: string; name: string; market_cap?: number; price?: number }) => ({
+    return data.data.map((asset: { symbol: string; name: string; market_cap?: number; price?: number }) => ({
       symbol: asset.symbol,
       name: asset.name,
       market_cap: asset.market_cap || 0,
@@ -56,7 +56,7 @@ export default function AssetOverview() {
 
   return (
     <div className="min-h-screen bg-yellow-200 p-8 font-mono">
-      <h1 className="text-6xl font-bold mb-8 text-red-600">Top 50 Stocks & ETFs</h1>
+      <h1 className="text-6xl font-bold mb-8 text-red-600">Top 10 Stocks</h1>
       {selectedAsset ? (
         <AssetDetails asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
       ) : (
